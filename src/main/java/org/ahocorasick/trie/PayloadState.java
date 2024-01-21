@@ -1,6 +1,7 @@
 package org.ahocorasick.trie;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * <p>
@@ -24,6 +25,7 @@ import java.util.*;
  *
  * @author Daniel Beck
  */
+
 public class PayloadState<T> {
 
     /**
@@ -41,8 +43,30 @@ public class PayloadState<T> {
      * referred to in the white paper as the 'goto' structure. From a state it is
      * possible to go to other states, depending on the character passed.
      */
-    private final Map<Character, PayloadState<T>> success = new HashMap<>();
+    private final PayloadState<T>[] kvs = new PayloadState[27];
 
+    void success_put(byte key, PayloadState<T> value) {
+        kvs[key - 'A'] = value;
+    }
+
+    PayloadState<T> success_get(byte key) {
+        key -= 'A';
+        if (key < 0 || key >= kvs.length)
+            return null;
+        return kvs[key];
+    }
+
+    Set<Character> success_keySet() {
+        Set<Character> set = new HashSet<>();
+        for (int i = 0; i < kvs.length; i++)
+            if (kvs[i] != null)
+                set.add((char) (i + 'A'));
+        return set;
+    }
+
+    Collection<PayloadState<T>> success_values() {
+        return Arrays.stream(kvs).filter(Objects::nonNull).collect(Collectors.toCollection(ArrayList::new));
+    }
     /**
      * if no matching states are found, the failure state will be returned
      */
@@ -64,7 +88,7 @@ public class PayloadState<T> {
     }
 
     private PayloadState<T> nextState(final Character character, final boolean ignoreRootState) {
-        PayloadState<T> nextState = this.success.get(character);
+        PayloadState<T> nextState = this.success_get((byte) (char) character);
 
         if (!ignoreRootState && nextState == null && this.rootState != null) {
             nextState = this.rootState;
@@ -85,7 +109,7 @@ public class PayloadState<T> {
         PayloadState<T> nextState = nextStateIgnoreRootState(character);
         if (nextState == null) {
             nextState = new PayloadState<>(this.depth + 1);
-            this.success.put(character, nextState);
+            this.success_put((byte) (char) character, nextState);
         }
         return nextState;
     }
@@ -135,10 +159,10 @@ public class PayloadState<T> {
     }
 
     public Collection<PayloadState<T>> getStates() {
-        return this.success.values();
+        return this.success_values();
     }
 
     public Collection<Character> getTransitions() {
-        return this.success.keySet();
+        return this.success_keySet();
     }
 }
